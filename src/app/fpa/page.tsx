@@ -105,7 +105,7 @@ router.push('/report?type=fpa')
               style={{ border:'2px dashed #1C2E45', borderRadius:11, padding:28, textAlign:'center', cursor:'pointer' }}
               onMouseEnter={e=>(e.currentTarget as HTMLElement).style.borderColor='#00C8F0'}
               onMouseLeave={e=>(e.currentTarget as HTMLElement).style.borderColor='#1C2E45'}>
-              <input id={'file'+key} type="file" accept=".csv,.txt,.pdf,.xlsx,.xls,application/pdf,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" style={{ display:'none' }}
+              <input id={'file'+key} type="file" accept="*" style={{ display:'none' }}
                 onChange={e=>{if(e.target.files?.[0]) key==='A'?setFileA(e.target.files[0]):setFileB(e.target.files[0])}}/>
               <p style={{ fontWeight:600, fontSize:13, color:'#E6EDF6', marginBottom:4 }}>{label}</p>
               <p style={{ color:(key==='A'?fileA:fileB)?'#00DFA0':'#607898', fontSize:12 }}>
