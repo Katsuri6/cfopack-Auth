@@ -45,11 +45,18 @@ export default function FPAPage() {
       if (useDemo) {
         data = FPA_DEMO as Record<string, unknown>[]
       } else {
+        let textA: string
         if (fileA!.name.toLowerCase().endsWith('.pdf')) {
-  throw new Error('PDF files cannot be parsed directly. Please export your data as CSV from Excel or Google Sheets and upload that instead.')
-}
-const textA = await fileA!.text()
-let rawA = parseCSV(textA)
+          const fd = new FormData()
+          fd.append('file', fileA!)
+          const res = await fetch('/api/parse-pdf', { method: 'POST', body: fd })
+          const json = await res.json()
+          if (!res.ok || !json.csv) throw new Error(json.error || 'Failed to extract data from PDF')
+          textA = json.csv
+        } else {
+          textA = await fileA!.text()
+        }
+        let rawA = parseCSV(textA)
         if (fileB) {
           const textB = await fileB.text()
           const rawB = parseCSV(textB)
@@ -73,8 +80,8 @@ let rawA = parseCSV(textA)
       await tick(4, 200)
       sessionStorage.setItem('cfopack_fpa', JSON.stringify({ analysis, commentary }))
       saveFPAReport({ analysis, commentary, fileName }).catch(() => {})
-await new Promise(r => setTimeout(r, 2000))
-router.push('/report?type=fpa')
+      await new Promise(r => setTimeout(r, 2000))
+      router.push('/report?type=fpa')
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Analysis failed.')
       setIsLoading(false)

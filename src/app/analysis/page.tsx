@@ -40,7 +40,19 @@ export default function AnalysisPage() {
     try {
       for (let i = 0; i < STEPS.length - 1; i++) await tick(i)
       const fileName = useDemo ? 'demo_pl.csv' : file!.name
-      const raw = useDemo ? FIN_DEMO as Record<string, unknown>[] : parseCSV(await file!.text())
+      let raw: Record<string, unknown>[]
+if (useDemo) {
+  raw = FIN_DEMO as Record<string, unknown>[]
+} else if (file!.name.toLowerCase().endsWith('.pdf')) {
+  const fd = new FormData()
+  fd.append('file', file!)
+  const res = await fetch('/api/parse-pdf', { method: 'POST', body: fd })
+  const json = await res.json()
+  if (!res.ok || !json.csv) throw new Error(json.error || 'Failed to extract data from PDF')
+  raw = parseCSV(json.csv)
+} else {
+  raw = parseCSV(await file!.text())
+}
       const analysis = calcFIN(raw)
       const commentary = buildFinCommentary(analysis)
       sessionStorage.setItem('cfopack_fin', JSON.stringify({ analysis, commentary }))
@@ -75,8 +87,8 @@ router.push('/report?type=financial')
           style={{ border:'2px dashed #1C2E45', borderRadius:11, padding:40, textAlign:'center', cursor:'pointer', marginBottom:14 }}
           onMouseEnter={e=>(e.currentTarget as HTMLElement).style.borderColor='#9B7FFF'}
           onMouseLeave={e=>(e.currentTarget as HTMLElement).style.borderColor='#1C2E45'}>
-          <input id="finFile" type="file" accept=".csv,.txt" style={{ display:'none' }}
-            onChange={e=>{if(e.target.files?.[0])setFile(e.target.files[0])}}/>
+          <input id="finFile" type="file" accept="*" style={{ display:'none' }}
+  onChange={e=>{if(e.target.files?.[0])setFile(e.target.files[0])}}/>
           <p style={{ fontWeight:600, fontSize:14, color:'#E6EDF6', marginBottom:6 }}>{file?file.name:'Drop your financial file here'}</p>
           <p style={{ color:file?'#00DFA0':'#607898', fontSize:12 }}>{file?`${(file.size/1024).toFixed(1)} KB — ready`:'CSV or Excel · Click to browse'}</p>
         </div>
