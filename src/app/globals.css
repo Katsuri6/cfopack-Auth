@@ -1,0 +1,81 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-dm-sans: 'DM Sans', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: #070D18;
+  color: #E6EDF6;
+  font-family: var(--font-dm-sans);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: #0C1420; }
+::-webkit-scrollbar-thumb { background: #1C2E45; border-radius: 2px; }
+
+@layer components {
+  .card {
+    @apply bg-card border border-bdr rounded-xl;
+  }
+  .btn-cyan {
+    @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-black
+           bg-acc-gradient transition-all duration-200 hover:-translate-y-px hover:shadow-lg hover:shadow-acc/30;
+  }
+  .btn-purple {
+    @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white
+           bg-pur-gradient transition-all duration-200 hover:-translate-y-px hover:shadow-lg hover:shadow-pur/30;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-mut
+           bg-transparent border border-bdr transition-all duration-200 hover:border-acc hover:text-acc;
+  }
+  .tag-cyan {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider
+           bg-acc/10 text-acc border border-acc/20;
+  }
+  .tag-purple {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider
+           bg-pur/10 text-pur border border-pur/20;
+  }
+  .tag-green {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider
+           bg-grn/10 text-grn border border-grn/20;
+  }
+  .tag-red {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider
+           bg-red/10 text-red border border-red/20;
+  }
+  .tag-amber {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider
+           bg-amb/10 text-amb border border-amb/20;
+  }
+  .input {
+    @apply w-full bg-surf border border-bdr rounded-lg px-3 py-2.5 text-sm text-txt placeholder-dim
+           outline-none transition-colors duration-200 focus:border-acc;
+  }
+  .section-label {
+    @apply text-[10px] font-bold uppercase tracking-[0.09em] text-mut mb-3;
+  }
+  .kpi-card {
+    @apply card p-5;
+  }
+  .drop-zone {
+    @apply border-2 border-dashed border-bdr rounded-xl p-8 text-center cursor-pointer
+           transition-all duration-200 hover:border-acc hover:bg-acc/5;
+  }
+  .drop-zone.dragging {
+    @apply border-acc bg-acc/10;
+  }
+}
