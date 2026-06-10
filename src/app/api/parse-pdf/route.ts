@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import pdfParse from 'pdf-parse'
 
 export async function POST(request: NextRequest) {
   try {
@@ -7,46 +8,40 @@ export async function POST(request: NextRequest) {
     if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
 
     const bytes = await file.arrayBuffer()
-    const base64 = Buffer.from(bytes).toString('base64')
+    const buffer = Buffer.from(bytes)
+    const pdfData = await pdfParse(buffer)
+    const text = pdfData.text
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY!,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-opus-4-5',
-        max_tokens: 4096,
-        messages: [{
-          role: 'user',
-          content: [
-            {
-              type: 'document',
-              source: { type: 'base64', media_type: 'application/pdf', data: base64 }
-            },
-            {
-              type: 'text',
-              text: `Extract all financial data from this PDF into a CSV format. 
-Return ONLY a CSV string with these exact columns: Department,Account,Month,Actual,Budget
-- Department: the business unit or cost center (use "General" if not specified)
-- Account: the line item name (e.g. Revenue, Salaries, Rent, etc.)
-- Month: the period (e.g. Jan-2025, or use "Period1" if unclear)
-- Actual: the actual amount as a number (no currency symbols or commas)
-- Budget: the budget amount as a number (use 0 if not available)
-Extract every row of financial data you can find. Return ONLY the CSV, no explanation, no markdown.`
-            }
-          ]
-        }]
-      })
-    })
+    // Try to extract financial table rows from raw text
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0)
+    const rows: string[] = []
+    rows.push('Department,Account,Month,Actual,Budget')
 
-    const data = await response.json()
-    if (!response.ok) throw new Error(data.error?.message || 'Claude API error')
+    for (const line of lines) {
+      // Match lines that contain at least one number (financial data)
+      const numbers = line.match(/[\d,]+\.?\d*/g)
+      if (!numbers || numbers.length < 1) continue
 
-    const csvText = data.content?.[0]?.text || ''
-    return NextResponse.json({ csv: csvText })
+      // Clean numbers
+      const nums = numbers.map(n => parseFloat(n.replace(/,/g, '')))
+        .filter(n => !isNaN(n) && n > 0)
+      if (nums.length < 1) continue
+
+      // Extract label (non-numeric part)
+      const label = line.replace(/[\d,.$%()/-]+/g, '').trim().replace(/\s+/g, ' ')
+      if (!label || label.length < 2) continue
+
+      const actual = nums[0] || 0
+      const budget = nums[1] || 0
+
+      rows.push(`General,"${label}",Period1,${actual},${budget}`)
+    }
+
+    if (rows.length < 2) {
+      return NextResponse.json({ error: 'No financial data found in PDF. Please ensure the PDF contains financial tables.' }, { status: 400 })
+    }
+
+    return NextResponse.json({ csv: rows.join('\n') })
 
   } catch (e: unknown) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Parse failed' }, { status: 500 })
