@@ -3,15 +3,6 @@ export const maxDuration = 30
 
 import { NextRequest, NextResponse } from 'next/server'
 
-// Polyfill DOMMatrix for Node.js
-if (typeof globalThis.DOMMatrix === 'undefined') {
-  // @ts-expect-error polyfill
-  globalThis.DOMMatrix = class DOMMatrix {
-    constructor() {}
-    static fromMatrix() { return new globalThis.DOMMatrix() }
-  }
-}
-
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
@@ -21,20 +12,26 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer()
 
     const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
-    pdfjsLib.GlobalWorkerOptions.workerSrc = ''
+    
+    // Disable worker entirely for server-side use
+    const pdfjsWorker = await import('pdfjs-dist/legacy/build/pdf.worker.mjs')
+    pdfjsLib.GlobalWorkerOptions.workerPort = new pdfjsWorker.WorkerMessageHandler() as unknown as Worker
 
     const pdf = await pdfjsLib.getDocument({ 
-      data: new Uint8Array(bytes), 
+      data: new Uint8Array(bytes),
       useWorkerFetch: false, 
       isEvalSupported: false, 
-      useSystemFonts: true 
+      useSystemFonts: true,
+      disableFontFace: true,
     }).promise
 
     let fullText = ''
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i)
       const content = await page.getTextContent()
-      const pageText = content.items.map((item: Record<string, unknown>) => (item.str as string) || '').join(' ')
+      const pageText = content.items
+        .map((item: Record<string, unknown>) => (item.str as string) || '')
+        .join(' ')
       fullText += pageText + '\n'
     }
 
