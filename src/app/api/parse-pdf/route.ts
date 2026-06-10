@@ -10,18 +10,25 @@ export async function POST(request: NextRequest) {
     if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
 
     const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
 
-    // Dynamic import to avoid Next.js bundling issues with pdf-parse
-    const pdfParse = (await import('pdf-parse')).default
-    const pdfData = await pdfParse(buffer)
-    const text: string = pdfData.text || ''
+    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
+    pdfjsLib.GlobalWorkerOptions.workerSrc = ''
 
-    if (!text.trim()) {
+    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(bytes), useWorkerFetch: false, isEvalSupported: false, useSystemFonts: true }).promise
+
+    let fullText = ''
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i)
+      const content = await page.getTextContent()
+      const pageText = content.items.map((item: Record<string, unknown>) => (item.str as string) || '').join(' ')
+      fullText += pageText + '\n'
+    }
+
+    if (!fullText.trim()) {
       return NextResponse.json({ error: 'No text extracted from PDF' }, { status: 400 })
     }
 
-    const lines = text.split('\n').map((l: string) => l.trim()).filter((l: string) => l.length > 0)
+    const lines = fullText.split('\n').map((l: string) => l.trim()).filter((l: string) => l.length > 0)
     const rows: string[] = []
     rows.push('Department,Account,Month,Actual,Budget')
 
@@ -39,7 +46,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (rows.length < 2) {
-      return NextResponse.json({ error: 'No financial data found. Text sample: ' + text.substring(0, 300) }, { status: 400 })
+      return NextResponse.json({ error: 'No financial data found. Text: ' + fullText.substring(0, 300) }, { status: 400 })
     }
 
     return NextResponse.json({ csv: rows.join('\n') })
