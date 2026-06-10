@@ -1,4 +1,9 @@
 export const runtime = 'nodejs'
+export const maxDuration = 30
+
+/* eslint-disable @typescript-eslint/no-require-imports */
+const pdfParse = require('pdf-parse')
+
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
@@ -9,39 +14,38 @@ export async function POST(request: NextRequest) {
 
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
-    
-    // Extract raw text from PDF buffer by finding text stream content
-    const pdfText = buffer.toString('latin1')
-    const textChunks: string[] = []
-    
-    // Extract text between BT and ET markers (PDF text blocks)
-    const btEtRegex = /BT([\s\S]*?)ET/g
-    let match
-    while ((match = btEtRegex.exec(pdfText)) !== null) {
-      const block = match[1]
-      // Extract strings in parentheses
-      const strRegex = /\(([^)]*)\)/g
-      let strMatch
-      while ((strMatch = strRegex.exec(block)) !== null) {
-        const str = strMatch[1].trim()
-        if (str.length > 0) textChunks.push(str)
-      }
-    }
+    const pdfData = await pdfParse(buffer)
+    const text = pdfData.text
 
-    const lines = textChunks.join(' ').split(/\s{2,}/).map(l => l.trim()).filter(l => l.length > 1)
+    const lines = text.split('\n').map((l: string) => l.trim()).filter((l: string) => l.length > 0)
     const rows: string[] = []
     rows.push('Department,Account,Month,Actual,Budget')
 
     for (const line of lines) {
-      const numbers = line.match(/[\d,]+\.?\d*/g)
-      if (!numbers || numbers.length < 1) continue
-      const nums = numbers.map(n => parseFloat(n.replace(/,/g, ''))).filter(n => !isNaN(n) && n > 0)
-      if (nums.length < 1) continue
-      const label = line.replace(/[\d,.$%()/-]+/g, '').trim().replace(/\s+/g, ' ')
-      if (!label || label.length < 2) continue
-      const actual = nums[0] || 0
-      const budget = nums[1] || 0
-      rows.push(`General,"${label}",Period1,${actual},${budget}`)
+      // Split by 2+ spaces to handle columns separated by spaces
+      const parts = line.split(/\s{2,}/).map((p: string) => p.trim()).filter((p: string) => p.length > 0)
+      
+      // Need at least 3 parts, last two should be numbers
+      if (parts.length < 3) continue
+      
+      const last = parts[parts.length - 1].replace(/,/g, '')
+      const secondLast = parts[parts.length - 2].replace(/,/g, '')
+      
+      const actual = parseFloat(secondLast)
+      const budget = parseFloat(last)
+      
+      // Skip if last two parts aren't numbers
+      if (isNaN(actual) || isNaN(budget)) continue
+      // Skip header rows
+      if (line.toLowerCase().includes('actual') && line.toLowerCase().includes('budget')) continue
+
+      // Remaining parts form the label
+      const labelParts = parts.slice(0, parts.length - 2)
+      const account = labelParts[0] || 'General'
+      const department = labelParts[1] || 'General'
+      const month = labelParts[2] || 'Period1'
+
+      rows.push(`${department},"${account}",${month},${actual},${budget}`)
     }
 
     if (rows.length < 2) {

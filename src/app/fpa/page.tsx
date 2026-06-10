@@ -51,7 +51,10 @@ export default function FPAPage() {
           fd.append('file', fileA!)
           const res = await fetch('/api/parse-pdf', { method: 'POST', body: fd })
           const json = await res.json()
-          if (!res.ok || !json.csv) throw new Error(json.error || 'Failed to extract data from PDF')
+          if (!res.ok) throw new Error(json.error || 'Failed to extract data from PDF')
+if (!json.csv && !json.debug) throw new Error(json.error || 'No data returned')
+if (json.debug) throw new Error('DEBUG: ' + json.debug)
+textA = json.csv
           textA = json.csv
         } else {
           textA = await fileA!.text()
