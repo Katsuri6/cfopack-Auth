@@ -3,9 +3,6 @@ export const maxDuration = 30
 
 import { NextRequest, NextResponse } from 'next/server'
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require('pdf-parse/lib/pdf-parse.js')
-
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
@@ -15,6 +12,8 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
+    // Dynamic import to avoid Next.js bundling issues with pdf-parse
+    const pdfParse = (await import('pdf-parse')).default
     const pdfData = await pdfParse(buffer)
     const text: string = pdfData.text || ''
 
