@@ -3,6 +3,15 @@ export const maxDuration = 30
 
 import { NextRequest, NextResponse } from 'next/server'
 
+// Polyfill DOMMatrix for Node.js
+if (typeof globalThis.DOMMatrix === 'undefined') {
+  // @ts-expect-error polyfill
+  globalThis.DOMMatrix = class DOMMatrix {
+    constructor() {}
+    static fromMatrix() { return new globalThis.DOMMatrix() }
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
@@ -14,7 +23,12 @@ export async function POST(request: NextRequest) {
     const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
     pdfjsLib.GlobalWorkerOptions.workerSrc = ''
 
-    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(bytes), useWorkerFetch: false, isEvalSupported: false, useSystemFonts: true }).promise
+    const pdf = await pdfjsLib.getDocument({ 
+      data: new Uint8Array(bytes), 
+      useWorkerFetch: false, 
+      isEvalSupported: false, 
+      useSystemFonts: true 
+    }).promise
 
     let fullText = ''
     for (let i = 1; i <= pdf.numPages; i++) {
