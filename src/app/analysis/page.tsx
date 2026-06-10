@@ -55,7 +55,20 @@ if (useDemo) {
 }
       const analysis = calcFIN(raw)
       const commentary = buildFinCommentary(analysis)
-      sessionStorage.setItem('cfopack_fin', JSON.stringify({ analysis, commentary }))
+      try {
+  sessionStorage.setItem('cfopack_fin', JSON.stringify({ analysis, commentary }))
+} catch {
+  // If too large, store only commentary and summary
+  const slim = { 
+    analysis: { 
+      summary: analysis.summary, 
+      metrics: analysis.metrics,
+      periods: analysis.periods?.slice(0, 6) 
+    }, 
+    commentary 
+  }
+  sessionStorage.setItem('cfopack_fin', JSON.stringify(slim))
+}
       saveFinReport({ analysis, commentary, fileName }).catch(() => {})
 await new Promise(r => setTimeout(r, 2000))
 router.push('/report?type=financial')
